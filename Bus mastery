@@ -194,32 +194,31 @@ EgglerButtons[3].MouseButton1Click:Connect(function()
 	end)()
 end)
 -- 第二、三任務功能
+local task23Running = false
+local task23Thread = nil
+
 EgglerButtons[4].MouseButton1Click:Connect(function()
-    if task23Loop then
-        task23Loop:Disconnect()
-        task23Loop = nil
+    if task23Running then
+        task23Running = false
         EgglerButtons[4].Text = "第二、三任務"
     else
+        task23Running = true
         EgglerButtons[4].Text = "第二、三任務 [運行中]"
-        
+
         local function fireBusMoment()
             ReplicatedStorage:WaitForChild("busmoment"):FireServer()
         end
-        
-        fireBusMoment() -- 立即執行一次
-        task23Loop = game:GetService("RunService").Heartbeat:Connect(function()
-            wait(7)
-            fireBusMoment()
+
+        -- 開始執行循環任務
+        task23Thread = task.spawn(function()
+            while task23Running do
+                fireBusMoment()
+                task.wait(7)
+            end
         end)
-        
-        EgglerButtons[4].MouseButton1Click:Wait() -- 等待再次點擊
-        if task23Loop then
-            task23Loop:Disconnect()
-            task23Loop = nil
-        end
-        EgglerButtons[4].Text = "第二、三任務"
     end
 end)
+
 
 -- 死後回場功能
 EgglerButtons[5].MouseButton1Click:Connect(function()
