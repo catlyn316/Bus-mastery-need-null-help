@@ -195,6 +195,7 @@ EgglerButtons[3].MouseButton1Click:Connect(function()
             if target then
                 local args = { target.Character.Torso }
                 ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
+                wait(1)
             end
         end)
         
