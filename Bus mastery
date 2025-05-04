@@ -170,49 +170,29 @@ end)
 -- 第一任務功能
 -- 第一任務功能
 EgglerButtons[3].MouseButton1Click:Connect(function()
-    if task1Loop then
-        task1Loop:Disconnect()
-        task1Loop = nil
-        EgglerButtons[3].Text = "第一任務"
-    else
-        EgglerButtons[3].Text = "第一任務 [運行中]"
-        
-        task1Loop = game:GetService("RunService").Heartbeat:Connect(function()
-            -- 尋找最近的玩家
-            local target = nil
-            local closestDistance = math.huge
-            
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Torso") then
-                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Torso.Position).Magnitude
-                    if distance < closestDistance then
-                        closestDistance = distance
-                        target = player
-                    end
-                end
-            end
-            
-            if target then
-                local args = { target.Character.Torso }
-                ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
-                
-                -- 攻擊後等待1秒
-                wait(1)
-            else
-                -- 沒有目標也等待1秒再檢查
-                wait(1)
-            end
-        end)
-        
-        EgglerButtons[3].MouseButton1Click:Wait() -- 等待再次點擊
-        if task1Loop then
-            task1Loop:Disconnect()
-            task1Loop = nil
-        end
-        EgglerButtons[3].Text = "第一任務"
-    end
-end)
+	isHitLooping = not isHitLooping
+	EgglerButtons[3].Text = "第一任務：" .. (isHitLooping and "開" or "關")
 
+	coroutine.wrap(function()
+		while isHitLooping do
+			local target = nil
+			local closestDist = math.huge
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Torso") then
+					local dist = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Torso.Position).Magnitude
+					if dist < closestDist then
+						closestDist = dist
+						target = player.Character.Torso
+					end
+				end
+			end
+			if target then
+				ReplicatedStorage:WaitForChild("hitbus"):FireServer(target)
+			end
+			wait(0.4)
+		end
+	end)()
+end)
 -- 第二、三任務功能
 EgglerButtons[4].MouseButton1Click:Connect(function()
     if task23Loop then
