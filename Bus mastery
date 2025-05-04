@@ -170,45 +170,57 @@ EgglerButtons[3].MouseButton1Click:Connect(function()
 end)
 
 -- 第4個按鈕：監聽 "Imp"，出現後攻擊所有 getnilinstances 的 MeshPart，持續7秒後重覆
+-- 第4個按鈕：偵測 Imp 出現並觸發 busmoment 與 hitbus（每 7 秒循環一次）
 EgglerButtons[4].MouseButton1Click:Connect(function()
 	isImpLooping = not isImpLooping
 	EgglerButtons[4].Text = "第二、三任務：" .. (isImpLooping and "開" or "關")
 
-	local function getNil(name, class)
+	local function hasImp()
 		for _, v in next, getnilinstances() do
-			if v.ClassName == class and v.Name == name then
-				return v
+			if v:IsA("Model") and v.Name == "Imp" then
+				return true
 			end
 		end
+		return false
 	end
 
-	-- 傳送 nil MeshPart 攻擊
-	local function attackAllNil()
-		local args = {Instance.new("MeshPart", nil)}
-		ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
+	local function getNilMeshParts()
+		local parts = {}
+		for _, v in next, getnilinstances() do
+			if v:IsA("MeshPart") then
+				table.insert(parts, v)
+			end
+		end
+		return parts
 	end
 
 	coroutine.wrap(function()
-		local busStarted = false
+		local impActive = false
 		while isImpLooping do
-			-- 若尚未啟動，檢查是否有第一隻 Imp 出現
-			if not busStarted and getNil("Imp", "Model") then
-				busStarted = true
-			end
+			if hasImp() then
+				if not impActive then
+					impActive = true
+					ReplicatedStorage:WaitForChild("busmoment"):FireServer()
+					
+					coroutine.wrap(function()
+						for i = 1, 70 do -- 0.1 秒 * 70 = 7 秒
+							if not isImpLooping then break end
 
-			if busStarted then
-				-- 執行 busmoment
-				ReplicatedStorage:WaitForChild("busmoment"):FireServer()
+							local args = {
+								Instance.new("MeshPart", nil)
+							}
+							ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
 
-				-- 7 秒內持續攻擊所有 nil MeshPart
-				for i = 1, 70 do -- 每 0.1 秒一次，共 7 秒
-					if not isImpLooping then break end
-					attackAllNil()
-					wait(0.1)
+							wait(0.1)
+						end
+						impActive = false
+					end)()
 				end
 			else
-				wait(1) -- 每秒檢查一次 Imp
+				impActive = false
 			end
+			wait(0.1)
 		end
 	end)()
 end)
+
