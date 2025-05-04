@@ -168,6 +168,7 @@ EgglerButtons[2].MouseButton1Click:Connect(function()
 end)
 
 -- 第一任務功能
+-- 第一任務功能
 EgglerButtons[3].MouseButton1Click:Connect(function()
     if task1Loop then
         task1Loop:Disconnect()
@@ -177,11 +178,10 @@ EgglerButtons[3].MouseButton1Click:Connect(function()
         EgglerButtons[3].Text = "第一任務 [運行中]"
         
         task1Loop = game:GetService("RunService").Heartbeat:Connect(function()
-            wait(1)
+            -- 尋找最近的玩家
             local target = nil
             local closestDistance = math.huge
             
-            -- 尋找最近的玩家
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Torso") then
                     local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Torso.Position).Magnitude
@@ -195,6 +195,11 @@ EgglerButtons[3].MouseButton1Click:Connect(function()
             if target then
                 local args = { target.Character.Torso }
                 ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
+                
+                -- 攻擊後等待1秒
+                wait(1)
+            else
+                -- 沒有目標也等待1秒再檢查
                 wait(1)
             end
         end)
