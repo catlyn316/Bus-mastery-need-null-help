@@ -164,7 +164,7 @@ EgglerButtons[3].MouseButton1Click:Connect(function()
 			if target then
 				ReplicatedStorage:WaitForChild("hitbus"):FireServer(target)
 			end
-			wait(0.4)
+			wait(0.6)
 		end
 	end)()
 end)
