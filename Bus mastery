@@ -192,31 +192,56 @@ EgglerButtons[4].MouseButton1Click:Connect(function()
 		return parts
 	end
 
-	local lastBusMoment = 0
-
 	coroutine.wrap(function()
+		local lastBusMoment = 0
+		local impDetected = false
+
 		while isImpLooping do
+			-- 傳送死亡玩家回 lobby
+			pcall(function()
+				if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+					if workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("Teleport1") then
+						LocalPlayer.Character:WaitForChild("HumanoidRootPart").CFrame = workspace.Lobby.Teleport1.CFrame
+					end
+				end
+			end)
+
 			local imp = getNil("Imp", "Model")
-			if imp then
-				local now = tick()
-				if now - lastBusMoment >= 7 then
+			if imp and not impDetected then
+				impDetected = true
+
+				-- 只有超過7秒未使用 busmoment 才觸發
+				if tick() - lastBusMoment > 7 then
 					ReplicatedStorage:WaitForChild("busmoment"):FireServer()
-					lastBusMoment = now
+					lastBusMoment = tick()
 				end
 
-				local startTime = tick()
-				while tick() - startTime <= 7 and isImpLooping do
-					local parts = getNilMeshParts()
-					for _, part in ipairs(parts) do
-						local args = {part}
+				-- 持續攻擊所有 nil 中的 MeshPart
+				local attackTime = 7
+				local start = tick()
+				while tick() - start < attackTime and isImpLooping do
+					local args = {
+						Instance.new("MeshPart", nil)
+					}
+					for _, part in ipairs(getNilMeshParts()) do
 						ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
 					end
 					wait(0.1)
 				end
+
+				-- 等待 imp 消失後重置
+				repeat
+					wait(0.5)
+					imp = getNil("Imp", "Model")
+				until not imp or not isImpLooping
+
+				impDetected = false
 			end
-			wait(1)
+
+			wait(0.5)
 		end
 	end)()
 end)
+
 
 
