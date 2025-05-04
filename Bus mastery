@@ -118,99 +118,97 @@ local EgglerButtons = {
 }
 
 -- 固定位置功能
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+
+-- [1] 固定位置
+local isPositionLocked = false
+local ignorePositionLock = false
+local originalPosition
+local positionConnection
+
 EgglerButtons[1].MouseButton1Click:Connect(function()
     isPositionLocked = not isPositionLocked
-    
+    EgglerButtons[1].Text = "null/bus固定位置：" .. (isPositionLocked and "開" or "關")
+
     if isPositionLocked then
-        EgglerButtons[1].Text = "null/bus固定位置：開"
         originalPosition = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.CFrame
-        
-        local connection
-        connection = game:GetService("RunService").Heartbeat:Connect(function()
+        positionConnection = RunService.Heartbeat:Connect(function()
             if not ignorePositionLock and isPositionLocked and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = originalPosition
             end
         end)
-        
-        EgglerButtons[1].MouseButton1Click:Wait() -- 等待再次點擊
-        connection:Disconnect()
-        EgglerButtons[1].Text = "null/bus固定位置：關"
-        isPositionLocked = false
+    elseif positionConnection then
+        positionConnection:Disconnect()
     end
 end)
 
--- 連放null功能
+-- [2] 連放 Null
+local nullLoopRunning = false
+
 EgglerButtons[2].MouseButton1Click:Connect(function()
-    if nullLoop then
-        nullLoop:Disconnect()
-        nullLoop = nil
-        EgglerButtons[2].Text = "連放null(14秒)"
-    else
-        EgglerButtons[2].Text = "連放null(14秒) [運行中]"
-        
-        local function fireNull()
-            ReplicatedStorage:WaitForChild("NullAbility"):FireServer()
-        end
-        
-        fireNull() -- 立即執行一次
-        nullLoop = game:GetService("RunService").Heartbeat:Connect(function()
-            wait(14)
-            fireNull()
+    nullLoopRunning = not nullLoopRunning
+    EgglerButtons[2].Text = "連放null(14秒)" .. (nullLoopRunning and " [運行中]" or "")
+
+    if nullLoopRunning then
+        task.spawn(function()
+            local function fireNull()
+                ReplicatedStorage:WaitForChild("NullAbility"):FireServer()
+            end
+
+            while nullLoopRunning do
+                fireNull()
+                task.wait(14)
+            end
         end)
-        
-        EgglerButtons[2].MouseButton1Click:Wait() -- 等待再次點擊
-        if nullLoop then
-            nullLoop:Disconnect()
-            nullLoop = nil
-        end
-        EgglerButtons[2].Text = "連放null(14秒)"
     end
 end)
 
--- 第一任務功能
--- 第一任務功能
-EgglerButtons[3].MouseButton1Click:Connect(function()
-	isHitLooping = not isHitLooping
-	EgglerButtons[3].Text = "第一任務：" .. (isHitLooping and "開" or "關")
+-- [3] 第一任務（自動 hitbus）
+local isHitLooping = false
 
-	coroutine.wrap(function()
-		while isHitLooping do
-			local target = nil
-			local closestDist = math.huge
-			for _, player in pairs(Players:GetPlayers()) do
-				if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Torso") then
-					local dist = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Torso.Position).Magnitude
-					if dist < closestDist then
-						closestDist = dist
-						target = player.Character.Torso
-					end
-				end
-			end
-			if target then
-				ReplicatedStorage:WaitForChild("hitbus"):FireServer(target)
-			end
-			wait(1)
-		end
-	end)()
+EgglerButtons[3].MouseButton1Click:Connect(function()
+    isHitLooping = not isHitLooping
+    EgglerButtons[3].Text = "第一任務：" .. (isHitLooping and "開" or "關")
+
+    if isHitLooping then
+        task.spawn(function()
+            while isHitLooping do
+                local target, closestDist = nil, math.huge
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Torso") then
+                        local dist = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Torso.Position).Magnitude
+                        if dist < closestDist then
+                            closestDist = dist
+                            target = player.Character.Torso
+                        end
+                    end
+                end
+                if target then
+                    ReplicatedStorage:WaitForChild("hitbus"):FireServer(target)
+                end
+                task.wait(1)
+            end
+        end)
+    end
 end)
--- 第二、三任務功能
+
+-- [4] 第二、三任務（每7秒 busmoment）
 local task23Running = false
-local task23Thread = nil
 
 EgglerButtons[4].MouseButton1Click:Connect(function()
+    task23Running = not task23Running
+    EgglerButtons[4].Text = "第二、三任務" .. (task23Running and " [運行中]" or "")
+
     if task23Running then
-        task23Running = false
-        EgglerButtons[4].Text = "第二、三任務"
-    else
-        task23Running = true
-        EgglerButtons[4].Text = "第二、三任務 [運行中]"
+        task.spawn(function()
+            local function fireBusMoment()
+                ReplicatedStorage:WaitForChild("busmoment"):FireServer()
+            end
 
-        local function fireBusMoment()
-            ReplicatedStorage:WaitForChild("busmoment"):FireServer()
-        end
-
-        -- 開始執行循環任務
-        task23Thread = task.spawn(function()
             while task23Running do
                 fireBusMoment()
                 task.wait(7)
@@ -219,21 +217,21 @@ EgglerButtons[4].MouseButton1Click:Connect(function()
     end
 end)
 
+-- [5] 死後回場
+local respawnEnabled = false
 
--- 死後回場功能
 EgglerButtons[5].MouseButton1Click:Connect(function()
     respawnEnabled = not respawnEnabled
-    
+    EgglerButtons[5].Text = "死後回場：" .. (respawnEnabled and "開" or "關")
+
     if respawnEnabled then
-        EgglerButtons[5].Text = "死後回場：開"
-        
         LocalPlayer.CharacterAdded:Connect(function(character)
             if respawnEnabled then
                 ignorePositionLock = true
-                wait(0)
+                task.wait(0)
                 if character:FindFirstChild("HumanoidRootPart") then
                     character.HumanoidRootPart.CFrame = Workspace.Lobby.Teleport1.CFrame
-                    wait(0.5)
+                    task.wait(0.5)
                     if isPositionLocked and originalPosition then
                         character.HumanoidRootPart.CFrame = originalPosition
                     end
@@ -241,12 +239,8 @@ EgglerButtons[5].MouseButton1Click:Connect(function()
                 ignorePositionLock = false
             end
         end)
-        
-        EgglerButtons[5].MouseButton1Click:Wait() -- 等待再次點擊
-        EgglerButtons[5].Text = "死後回場：關"
-        respawnEnabled = false
     end
 end)
 
--- 初始化時顯示分區的按鈕
+-- 顯示按鈕
 for _, b in ipairs(EgglerButtons) do b.Visible = true end
