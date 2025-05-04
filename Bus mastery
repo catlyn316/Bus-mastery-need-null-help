@@ -174,51 +174,41 @@ EgglerButtons[4].MouseButton1Click:Connect(function()
 	isImpLooping = not isImpLooping
 	EgglerButtons[4].Text = "第二、三任務：" .. (isImpLooping and "開" or "關")
 
-	local function getNilMeshParts()
-		local parts = {}
+	local function getNil(name, class)
 		for _, v in next, getnilinstances() do
-			if v:IsA("MeshPart") and v.Name == "MeshPart" then
-				table.insert(parts, v)
+			if v.ClassName == class and v.Name == name then
+				return v
 			end
 		end
-		return parts
 	end
 
-	local function findImp()
-		for _, v in next, getnilinstances() do
-			if v:IsA("Model") and v.Name == "Imp" then
-				return true
-			end
-		end
-		return false
+	-- 傳送 nil MeshPart 攻擊
+	local function attackAllNil()
+		local args = {Instance.new("MeshPart", nil)}
+		ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
 	end
 
 	coroutine.wrap(function()
+		local busStarted = false
 		while isImpLooping do
-			-- 等待 Imp 出現
-			repeat task.wait(1) until not isImpLooping or findImp()
-			if not isImpLooping then break end
+			-- 若尚未啟動，檢查是否有第一隻 Imp 出現
+			if not busStarted and getNil("Imp", "Model") then
+				busStarted = true
+			end
 
-			-- 每 7 秒觸發一次 busmoment + 持續攻擊 nil MeshParts
-			while isImpLooping and findImp() do
-				-- 觸發 busmoment
+			if busStarted then
+				-- 執行 busmoment
 				ReplicatedStorage:WaitForChild("busmoment"):FireServer()
 
-				local timer = 0
-				while timer < 7 and isImpLooping and findImp() do
-					local args = {Instance.new("MeshPart", nil)}
-					ReplicatedStorage:WaitForChild("hitbus"):FireServer(unpack(args))
-
-					-- 同時攻擊所有符合條件的 nil MeshPart
-					for _, part in ipairs(getNilMeshParts()) do
-						ReplicatedStorage:WaitForChild("hitbus"):FireServer(part)
-					end
-
-					task.wait(0.1)
-					timer += 0.1
+				-- 7 秒內持續攻擊所有 nil MeshPart
+				for i = 1, 70 do -- 每 0.1 秒一次，共 7 秒
+					if not isImpLooping then break end
+					attackAllNil()
+					wait(0.1)
 				end
+			else
+				wait(1) -- 每秒檢查一次 Imp
 			end
 		end
 	end)()
 end)
-
